@@ -16,6 +16,7 @@ import { i18n } from '../i18n'
 export type ToolEvent =
   | 'openAppTargets'
   | 'installKeybox'
+  | 'openKeyboxAuto'
   | 'syncSecurityPatch'
   | 'restoreSecurityPatch'
   | 'spoofPif'
@@ -54,6 +55,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   openAppTargets: []
   installKeybox: []
+  openKeyboxAuto: []
   syncSecurityPatch: []
   restoreSecurityPatch: []
   spoofPif: []
@@ -69,6 +71,7 @@ function runTool(event: ToolEvent): void {
   switch (event) {
     case 'openAppTargets': emit('openAppTargets'); break
     case 'installKeybox': emit('installKeybox'); break
+    case 'openKeyboxAuto': emit('openKeyboxAuto'); break
     case 'syncSecurityPatch': emit('syncSecurityPatch'); break
     case 'restoreSecurityPatch': emit('restoreSecurityPatch'); break
     case 'spoofPif': emit('spoofPif'); break
@@ -157,6 +160,13 @@ const groups = computed<{ title: string, rows: ToolRow[] }[]>(() => [
         icon: Replace,
         title: tr('menu_replace_keybox', 'Change Keybox'),
         summary: tr('tools_keybox_desc', 'Choose a Keybox.xml file and install it for Oh My Keymint.'),
+      },
+      {
+        key: 'keybox-auto',
+        event: 'openKeyboxAuto',
+        icon: Update,
+        title: tr('keybox_auto_title', 'Auto-fetch Keybox'),
+        summary: tr('keybox_auto_desc', 'Fetch a Keybox now or update it automatically on a schedule.'),
       },
       {
         key: 'rkp',

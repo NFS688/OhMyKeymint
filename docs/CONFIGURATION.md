@@ -40,8 +40,9 @@ not identical:
 - A valid `injector.toml` is applied to new requests without a reboot.
 - A valid `config.toml` is read automatically. The four patch-level fields,
   biometric compatibility switch, keybox-retirement switch, and three TA delay
-  ranges can take full effect without restarting keymint. The field reference
-  below states when a restart is required.
+  ranges can take full effect without restarting keymint. Automatic Keybox
+  settings are polled by the native worker without restarting keymint. The
+  field reference below states when a restart is required.
 - A malformed file saved while its component is running is rejected and the
   last valid in-memory configuration remains active.
 - A malformed `config.toml` present when keymint starts prevents keymint from
@@ -305,7 +306,48 @@ any installed storage provider, including MT Manager, and requests all MIME
 types so providers that label XML as `text/plain` or `application/octet-stream`
 remain available; the WebUI still requires an `.xml` filename. If the system
 picker cannot be opened, the WebUI falls back to its shared-storage browser.
-Its **Sync security
+Under **Keybox & attestation**, **Auto-fetch Keybox** downloads from either
+Yurikey or IntegrityBox. Automatic updates are disabled by default, with a
+60-minute interval and an empty GitHub proxy prefix. Saving a changed enabled
+setting starts a background fetch within five seconds, then repeats after the selected
+interval even with the WebUI closed. The existing privileged helper supervises a
+separate native KeyMint worker with root network access and a parent-bound
+lifetime. Network requests do not block Binder or property probes. KeyMint
+startup and saved-setting changes restart the schedule. Failed attempts wait
+the same interval before retrying. Invalid saved configuration pauses automatic
+updates until the file is valid again.
+**Fetch and replace now** uses the displayed settings once without saving them
+or enabling the schedule. Both actions explicitly authorize replacing the active
+Keybox. Download, decoding or local private-key/certificate validation failures
+leave the current Keybox intact. A scheduled download is discarded if its saved
+settings change before installation. Successful installs use the existing atomic
+Keybox writer and runtime file watcher; no reboot is required.
+
+The settings are stored in the existing `config.toml` under `[keybox_auto]`:
+
+```toml
+[keybox_auto]
+enabled = false
+source = "yurikey" # yurikey or integrity_box
+interval_minutes = 60 # integer from 1 to 43200
+proxy_prefix = "" # optional HTTPS GitHub acceleration prefix ending in /
+```
+
+Yurikey downloads `https://raw.githubusercontent.com/Yurii0307/yurikey/main/key`
+and decodes Base64 once. IntegrityBox downloads
+`https://github.com/MeowDump/Integrity-Box/releases/download/archive/Megatron`
+and decodes ten Base64 layers, hexadecimal and ROT13. Downloads and decoding
+stay in memory; this feature creates no additional persistent state or probe
+files. The decoded XML uses the existing 64 KiB import limit. The optional proxy
+prefix is supplied entirely by the user and is prepended to the full upstream
+URL; it is a GitHub acceleration URL, not an HTTP CONNECT or SOCKS endpoint.
+No proxy or mirror is bundled. Direct HTTPS redirects are limited to GitHub,
+GitHub Raw and GitHub release assets; proxy redirects must stay under the
+configured HTTPS authority and path. The HTTPS client verifies certificates.
+Public Keyboxes may be expired or revoked and do not guarantee Play Integrity
+acceptance; the Home page's certificate-status check remains separate.
+
+The **Sync security
 patch** action uses the root WebUI bridge to make an HTTPS request to the
 official `https://source.android.com/docs/security/bulletin/asb-overview` page,
 falling back to Google's official Chinese mirror when the primary host is
@@ -519,6 +561,16 @@ ta_generation_delay_ms = [6, 16]
 ta_control_delay_ms = [1, 4]
 # Retire dedicated ATTEST_KEY entries bound to a previous keybox identity.
 retire_stale_keybox_bound_keys = true
+
+[keybox_auto]
+# Opt in to replacing the current Keybox on a background schedule.
+enabled = false
+# Supported public feeds: yurikey or integrity_box.
+source = "yurikey"
+# Whole minutes, from 1 to 43200. Default: one hour.
+interval_minutes = 60
+# Optional user-supplied HTTPS GitHub acceleration prefix ending in /.
+proxy_prefix = ""
 
 [crypto]
 # Redacted placeholders only. Keep the generated 64-character values.

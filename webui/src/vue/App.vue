@@ -28,6 +28,7 @@ import { fetchLatestSecurityPatch } from '../security_patch'
 import { isDev } from '../utils/dev'
 import HomeView, { type KeyboxStatus, type ModuleStatus, type TeeStatus } from './HomeView.vue'
 import PifFingerprintDialog from './PifFingerprintDialog.vue'
+import KeyboxAutoDialog from './KeyboxAutoDialog.vue'
 import SettingsView from './SettingsView.vue'
 import SoterIdentityDialog from './SoterIdentityDialog.vue'
 import TargetsView from './TargetsView.vue'
@@ -82,6 +83,8 @@ const rkpIssueError = ref('')
 const rkpIssuedArtifacts = ref<RkpIssuedArtifact[]>([])
 const pendingRkpImport = ref<RkpIssuedArtifact | null>(null)
 const pifOpen = ref(false)
+const keyboxAutoOpen = ref(false)
+const keyboxAutoDialog = ref<InstanceType<typeof KeyboxAutoDialog> | null>(null)
 const soterLocalOpen = ref(false)
 const soterLocalDialog = ref<InstanceType<typeof SoterIdentityDialog> | null>(null)
 const keyboxOpen = ref(false)
@@ -648,6 +651,7 @@ function onTool(event: ToolEvent): void {
   switch (event) {
     case 'openAppTargets': openTargets(); break
     case 'installKeybox': void chooseKeybox(); break
+    case 'openKeyboxAuto': keyboxAutoOpen.value = true; break
     case 'syncSecurityPatch': void syncPatch(false); break
     case 'restoreSecurityPatch': void syncPatch(true); break
     case 'spoofPif': pifOpen.value = true; break
@@ -766,6 +770,23 @@ watch(pifOpen, open => {
     })
   } else if (!open && overlayHistory.delete('pif-fingerprint')) history.consume('pif-fingerprint')
 })
+watch(keyboxAutoOpen, open => {
+  if (open && !overlayHistory.has('keybox-auto')) {
+    const onBack = (): void => {
+      overlayHistory.delete('keybox-auto')
+      if (keyboxAutoDialog.value?.requestClose() === false) {
+        void nextTick(() => {
+          if (keyboxAutoOpen.value) {
+            overlayHistory.add('keybox-auto')
+            history.push('keybox-auto', onBack)
+          }
+        })
+      }
+    }
+    overlayHistory.add('keybox-auto')
+    history.push('keybox-auto', onBack)
+  } else if (!open && overlayHistory.delete('keybox-auto')) history.consume('keybox-auto')
+})
 watch(soterLocalOpen, open => {
   if (open && !overlayHistory.has('soter-local')) {
     overlayHistory.add('soter-local')
@@ -859,6 +880,7 @@ watch(rkpImportConfirmOpen, open => {
           @overlay-close="onToolsOverlayClose"
           @open-app-targets="onTool('openAppTargets')"
           @install-keybox="onTool('installKeybox')"
+          @open-keybox-auto="onTool('openKeyboxAuto')"
           @sync-security-patch="onTool('syncSecurityPatch')"
           @restore-security-patch="onTool('restoreSecurityPatch')"
           @spoof-pif="onTool('spoofPif')"
@@ -936,6 +958,13 @@ watch(rkpImportConfirmOpen, open => {
       </template>
     </MiuixDialog>
 
+    <KeyboxAutoDialog
+      ref="keyboxAutoDialog"
+      v-model="keyboxAutoOpen"
+      :cli="cli"
+      @notify="notify"
+      @changed="refreshIdentity(true)"
+    />
     <PifFingerprintDialog
       ref="pifDialog"
       v-model="pifOpen"

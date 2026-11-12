@@ -444,6 +444,34 @@ function parseDiagnostics(output: string): DiagnosticsState {
   }
 }
 
+export interface KeyboxAutoSettings {
+  enabled: boolean
+  source: 'yurikey' | 'integrity_box'
+  interval_minutes: number
+  proxy_prefix: string
+}
+
+function parseKeyboxAuto(output: string): KeyboxAutoSettings {
+  const state = parseCanonicalJson(output, 'automatic Keybox')
+  if (!isRecord(state) || !hasOnlyKeys(state, ['enabled', 'source', 'interval_minutes', 'proxy_prefix'])
+      || typeof state.enabled !== 'boolean'
+      || (state.source !== 'yurikey' && state.source !== 'integrity_box')
+      || typeof state.interval_minutes !== 'number' || !Number.isInteger(state.interval_minutes)
+      || state.interval_minutes < 1 || state.interval_minutes > 43200
+      || typeof state.proxy_prefix !== 'string' || state.proxy_prefix.length > 2048) {
+    throw new Error('Invalid automatic Keybox settings')
+  }
+  if (state.proxy_prefix) {
+    const url = new URL(state.proxy_prefix)
+    if (state.proxy_prefix !== state.proxy_prefix.trim() || !state.proxy_prefix.endsWith('/')
+        || url.protocol !== 'https:' || url.username || url.password || url.search || url.hash
+        || state.proxy_prefix.includes('?') || state.proxy_prefix.includes('#')) {
+      throw new Error('GitHub proxy prefix must be an HTTPS URL ending in / without credentials, query or fragment')
+    }
+  }
+  return state as unknown as KeyboxAutoSettings
+}
+
 function encodeBase64Bytes(bytes: Uint8Array): string {
   let binary = ''
   const chunkSize = 0x8000
@@ -484,6 +512,21 @@ function parseSupportedAbi(output: string): SupportedAbi | null {
 }
 
 export class Cli {
+  async getKeyboxAuto(): Promise<KeyboxAutoSettings> {
+    const { keymint } = await this.#getHelperPaths()
+    return parseKeyboxAuto(await this.#run(keymint, ['--webui-get-keybox-auto'], 8192))
+  }
+
+  async updateKeyboxAuto(settings: KeyboxAutoSettings, fetchNow = false): Promise<KeyboxAutoSettings> {
+    const payload = JSON.stringify(settings)
+    parseKeyboxAuto(payload)
+    const { keymint } = await this.#getHelperPaths()
+    return parseKeyboxAuto(await this.#run(keymint, [
+      fetchNow ? '--webui-fetch-keybox-auto' : '--webui-save-keybox-auto',
+      encodeBase64Utf8(payload), '--confirm-replace',
+    ], 8192))
+  }
+
   async getSoterLocal(): Promise<SoterIdentityState> {
     const { keymint } = await this.#getHelperPaths()
     return this.#parseSoterLocal(await this.#run(keymint, ['--webui-get-soter-local'], 256 * 1024))

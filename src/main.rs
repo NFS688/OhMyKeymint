@@ -29,6 +29,7 @@ pub mod consts;
 pub mod global;
 pub mod gms_cache;
 pub mod keybox;
+pub mod keybox_auto;
 pub mod keymaster;
 pub mod keymint;
 pub mod local_rkp;
@@ -874,6 +875,18 @@ fn handle_local_rkp_command(
 }
 
 fn main() {
+    if std::env::args().nth(1).as_deref() == Some("--keybox-auto-watch") {
+        if std::env::args().nth(2).is_some() {
+            eprintln!("--keybox-auto-watch does not accept arguments");
+            std::process::exit(2);
+        }
+        logging::init_logger();
+        if let Err(error) = keybox_auto::run_watcher() {
+            eprintln!("automatic Keybox watcher failed: {error:#}");
+            std::process::exit(2);
+        }
+        return;
+    }
     if let Some(command) = std::env::args().nth(1).filter(|value| {
         value == "--webui-get-soter-local" || value == "--webui-set-soter-local-base64"
     }) {
@@ -908,6 +921,10 @@ fn main() {
         return;
     }
     if let Some(result) = handle_webui_diagnostics_command()
+        .or_else(|| {
+            keybox_auto::command(std::env::args().skip(1))
+                .map(|result| result.map_err(|error| format!("{error:#}")))
+        })
         .or_else(|| handle_webui_app_patch_command(std::env::args().skip(1)))
         .or_else(|| handle_local_rkp_command(std::env::args().skip(1)))
         .or_else(|| handle_webui_maintenance_command(std::env::args().skip(1)))

@@ -298,4 +298,18 @@
     <string name="soter_cpu_invalid">CPU-ID must be 32 or 36 hexadecimal characters.</string>
     <string name="soter_local_empty">Add a local identity from Tools > Local SOTER identities first.</string>
     <string name="soter_local_inactive">SOTER is disabled. Enable it in Tools for this assignment to take effect.</string>
+    <string name="keybox_auto_title">Auto-fetch Keybox</string>
+    <string name="keybox_auto_desc">Fetch a Keybox now or update it automatically on a schedule</string>
+    <string name="keybox_auto_notice">Fetching replaces the current Keybox after local validation. Saving with automatic updates enabled starts a fetch and repeats on schedule, even with the WebUI closed. Failed downloads or validation keep the current Keybox. A public Keybox does not guarantee Play Integrity results.</string>
+    <string name="keybox_auto_enable">Automatic updates</string>
+    <string name="keybox_auto_background">Runs in the KeyMint service using the saved source and interval</string>
+    <string name="keybox_auto_interval">Update interval (minutes)</string>
+    <string name="keybox_auto_interval_error">Enter a whole number from 1 to 43200</string>
+    <string name="keybox_auto_proxy">GitHub proxy prefix (optional)</string>
+    <string name="keybox_auto_proxy_placeholder">Leave empty for a direct connection</string>
+    <string name="keybox_auto_proxy_help">Enter your own HTTPS acceleration prefix ending in /; the original GitHub URL is appended. No proxy is bundled.</string>
+    <string name="keybox_auto_fetch">Fetch and replace now</string>
+    <string name="keybox_auto_saved">Automatic Keybox settings saved</string>
+    <string name="keybox_auto_fetched">Keybox downloaded, validated and installed</string>
+    <string name="keybox_auto_preview">Browser preview only; no settings or Keybox were changed</string>
 </resources>

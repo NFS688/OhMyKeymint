@@ -98,6 +98,23 @@ pub fn persist_config_file(config_file: &ConfigFile) -> Result<()> {
     persist_config_file_to_path(Path::new(CONFIG_PATH), config_file)
 }
 
+pub(crate) fn save_keybox_auto(settings: &crate::keybox_auto::Settings) -> Result<()> {
+    save_keybox_auto_to_path(Path::new(CONFIG_PATH), settings)
+}
+
+fn save_keybox_auto_to_path(path: &Path, settings: &crate::keybox_auto::Settings) -> Result<()> {
+    settings.validate()?;
+    let _operation = crate::security_patch::acquire_data_operation_lock(path)?;
+    let _write_guard =
+        CONFIG_FILE_WRITE_LOCK.lock().map_err(|_| anyhow!("config file write lock poisoned"))?;
+    let existing = fs::read_to_string(path).context("failed to read config.toml")?;
+    let mut parsed = parse_config_file(&existing, false)?;
+    parsed.table.insert("keybox_auto".into(), toml::Value::try_from(settings)?);
+    let contents = toml::to_string_pretty(&parsed.table)?;
+    parse_config_file(&contents, false)?;
+    persist_config_contents_unlocked(path, &contents)
+}
+
 /// Replace only the four trust patch-level fields with a validated value.
 ///
 /// This is intentionally separate from [`persist_config_file`]. The WebUI
@@ -398,6 +415,7 @@ fn parse_config_file(contents: &str, allow_migration: bool) -> Result<ParsedConf
     validate_main_config(&config_file.main)?;
     validate_trust_config(&config_file.trust)?;
     validate_app_patch_levels(&config_file.app_patch_levels)?;
+    config_file.keybox_auto.validate()?;
     Ok(ParsedConfigFile { config_file, table, migrated })
 }
 
@@ -682,6 +700,8 @@ pub struct ConfigFile {
     pub device: DeviceProperty,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub app_patch_levels: BTreeMap<String, AppPatchLevels>,
+    #[serde(default)]
+    pub keybox_auto: crate::keybox_auto::Settings,
 }
 
 impl Default for ConfigFile {
@@ -693,6 +713,7 @@ impl Default for ConfigFile {
             trust: RawTrustConfig::default(),
             device: DeviceProperty::default(),
             app_patch_levels: BTreeMap::new(),
+            keybox_auto: crate::keybox_auto::Settings::default(),
         }
     }
 }
@@ -1869,6 +1890,37 @@ imei2 = ""
         assert!(device.imei.is_empty());
         assert!(device.imei2.is_empty());
         assert!(device.meid.is_empty());
+    }
+
+    #[test]
+    fn automatic_keybox_save_preserves_identity_secrets_and_unknown_config() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("config.toml");
+        let original = format!(
+            "{}\n[unrelated]\nvalue = 123\n",
+            toml::to_string_pretty(&ConfigFile::default()).unwrap()
+        );
+        fs::write(&path, &original).unwrap();
+        let original: toml::Table = toml::from_str(&original).unwrap();
+        let settings = crate::keybox_auto::Settings {
+            enabled: true,
+            source: crate::keybox_auto::Source::IntegrityBox,
+            interval_minutes: 120,
+            proxy_prefix: "https://proxy.example/".into(),
+        };
+        save_keybox_auto_to_path(&path, &settings).unwrap();
+        let saved = fs::read_to_string(&path).unwrap();
+        let parsed = parse_config_file(&saved, false).unwrap();
+        assert_eq!(parsed.config_file.keybox_auto, settings);
+        for section in ["crypto", "device", "trust", "main", "unrelated"] {
+            assert_eq!(original.get(section), parsed.table.get(section));
+        }
+        let invalid = crate::keybox_auto::Settings { interval_minutes: 0, ..settings };
+        assert!(save_keybox_auto_to_path(&path, &invalid).is_err());
+        assert_eq!(fs::read_to_string(&path).unwrap(), saved);
+        fs::write(&path, "invalid existing config").unwrap();
+        assert!(save_keybox_auto_to_path(&path, &Default::default()).is_err());
+        assert_eq!(fs::read_to_string(&path).unwrap(), "invalid existing config");
     }
 
     #[derive(Deserialize)]

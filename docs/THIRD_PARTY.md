@@ -42,6 +42,17 @@ properties with `resetprop`, and records the original values for restore. Its
 separate restore action restores those properties and resets the four fields to
 `auto` without network access.
 
+## Automatic Keybox sources
+
+The automatic Keybox action independently implements the download formats
+described by [TrickyStoreHelper](https://github.com/Alan-qwq/TrickyStoreHelper):
+Yurikey uses Base64, while IntegrityBox uses ten Base64 layers, hexadecimal and
+ROT13. Oh My Keymint does not bundle or execute that shell script. IntegrityBox's
+current release URL is verified against its
+[official download script](https://github.com/MeowDump/Integrity-Box/blob/main/webroot/common_scripts/key.sh).
+The user selects either public source and optionally supplies a GitHub
+acceleration prefix; no proxy or downloaded Keybox is bundled with this feature.
+
 ## Pixel PIF profile feed
 
 The WebUI's PIF fingerprint field mapping follows the documented

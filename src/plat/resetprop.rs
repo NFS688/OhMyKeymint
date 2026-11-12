@@ -671,7 +671,7 @@ fn helper_loop(stream: UnixStream, command: Option<ResetpropCommand>) -> Result<
     if unsafe { libc::seteuid(kmr_common::consts::AID_SYSTEM) } != 0 {
         return Err(std::io::Error::last_os_error()).context("failed to enter system Binder UID");
     }
-    start_auto_targets_monitor();
+    start_module_monitors();
     let reader_stream = stream.try_clone().context("failed to clone resetprop helper socket")?;
     let mut reader = BufReader::new(reader_stream);
     let mut writer = stream;
@@ -725,19 +725,19 @@ fn helper_loop(stream: UnixStream, command: Option<ResetpropCommand>) -> Result<
     }
 }
 
-// The root helper owns package discovery so neither the KeyMint request path
-// nor the keystore2 injection thread has to run PackageManager commands.
-// The child binds its lifetime to this helper and is retried after an exit.
-fn start_auto_targets_monitor() {
-    start_injector_monitor("--auto-targets-watch", "omk-app-monitor");
-    start_injector_monitor("--soter-watch", "omk-soter-monitor");
+// The root helper supervises background work outside the KeyMint request path.
+// Each child binds its lifetime to this helper and is retried after an exit.
+fn start_module_monitors() {
+    start_module_monitor("inject", "--auto-targets-watch", "omk-app-monitor");
+    start_module_monitor("inject", "--soter-watch", "omk-soter-monitor");
+    start_module_monitor("keymint", "--keybox-auto-watch", "omk-keybox-monitor");
 }
 
-fn start_injector_monitor(command: &'static str, name: &'static str) {
-    let sibling = std::env::current_exe().ok().map(|path| path.with_file_name("inject"));
+fn start_module_monitor(binary: &'static str, command: &'static str, name: &'static str) {
+    let sibling = std::env::current_exe().ok().map(|path| path.with_file_name(binary));
     let abi = if cfg!(target_arch = "aarch64") { "arm64-v8a" } else { "x86_64" };
     let module_binary =
-        std::path::PathBuf::from(format!("/data/adb/modules/oh_my_keymint/libs/{abi}/inject"));
+        std::path::PathBuf::from(format!("/data/adb/modules/oh_my_keymint/libs/{abi}/{binary}"));
     if let Err(error) = std::thread::Builder::new().name(name.into()).spawn(move || loop {
         // This parent has system EUID and cannot stat /data/adb/omk. Let the
         // root child attempt the sibling executable instead of misclassifying

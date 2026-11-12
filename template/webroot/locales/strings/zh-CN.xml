@@ -298,4 +298,18 @@
     <string name="soter_cpu_invalid">CPU-ID 必须为 32 或 36 位十六进制字符。</string>
     <string name="soter_local_empty">请先在工具 → SOTER 本地身份中添加随机身份。</string>
     <string name="soter_local_inactive">SOTER 总开关未启用，请在工具中开启后生效。</string>
+    <string name="keybox_auto_title">自动获取Keybox</string>
+    <string name="keybox_auto_desc">立即获取 Keybox，或按自定义频率自动更新</string>
+    <string name="keybox_auto_notice">获取后会在本地校验通过时替换当前 Keybox，保存并启用自动更新后将立即获取，并按设定间隔在后台运行，关闭 WebUI 后仍然有效；下载或校验失败时保留当前 Keybox，公共 Keybox 不保证通过 Play Integrity</string>
+    <string name="keybox_auto_enable">启用自动更新</string>
+    <string name="keybox_auto_background">由 KeyMint 服务按已保存的来源和间隔执行</string>
+    <string name="keybox_auto_interval">更新间隔（分钟）</string>
+    <string name="keybox_auto_interval_error">请输入 1 至 43200 之间的整数</string>
+    <string name="keybox_auto_proxy">GitHub 代理前缀（可选）</string>
+    <string name="keybox_auto_proxy_placeholder">留空时直连</string>
+    <string name="keybox_auto_proxy_help">填写自定义 HTTPS 加速地址，以 / 结尾；系统会在其后拼接原始 GitHub 地址，不内置任何代理</string>
+    <string name="keybox_auto_fetch">立即获取并替换</string>
+    <string name="keybox_auto_saved">自动获取 Keybox 设置已保存</string>
+    <string name="keybox_auto_fetched">Keybox 已下载、校验并安装</string>
+    <string name="keybox_auto_preview">当前为浏览器预览，未修改配置或 Keybox</string>
 </resources>
